@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: resume-parser
+
+  web:
+    cors:
+      allowed-origins: "*"
+      allowed-methods: "*"
+      allowed-headers: "*"
+      allow-credentials: true
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+server:
+  port: 8080
+
+# ??????
+# pdf2txt??api ?pdf -> txt
+pdf2txt:
+  api:
+  login:
+  username:
+  password:
+# coze??  ????https://www.coze.cn/docs/developer_guides/chat_v3
+coze:
+  token:
+  bot-id:
+# ???? ????https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/create
+feishu:
+  app-id:
+  app-secret:
+  app-token:
+  table-id:
+file:
+  # /mnt/resume/
+  path:
+
+
+
+
+

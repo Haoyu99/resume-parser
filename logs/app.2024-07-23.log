@@ -1,0 +1,21 @@
+2024-07-23 23:22:17 INFO  c.e.r.ResumeParserApplication - Starting ResumeParserApplication using Java 11.0.20.1 on LAPTOP-6FFOT85G with PID 52776 (D:\resume-parser\resume-parser\target\classes started by 85218 in D:\resume-parser\resume-parser)
+2024-07-23 23:22:17 DEBUG c.e.r.ResumeParserApplication - Running with Spring Boot v2.5.4, Spring v5.3.9
+2024-07-23 23:22:17 INFO  c.e.r.ResumeParserApplication - No active profile set, falling back to default profiles: default
+2024-07-23 23:22:17 INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port(s): 8080 (http)
+2024-07-23 23:22:17 INFO  o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2024-07-23 23:22:17 INFO  o.a.catalina.core.StandardService - Starting service [Tomcat]
+2024-07-23 23:22:17 INFO  o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/9.0.52]
+2024-07-23 23:22:17 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2024-07-23 23:22:17 INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 845 ms
+2024-07-23 23:22:18 INFO  o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2024-07-23 23:22:18 INFO  o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2024-07-23 23:22:18 INFO  o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port(s): 8080 (http) with context path ''
+2024-07-23 23:22:18 INFO  c.e.r.ResumeParserApplication - Started ResumeParserApplication in 1.709 seconds (JVM running for 2.794)
+2024-07-23 23:22:18 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2024-07-23 23:22:18 INFO  o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2024-07-23 23:22:18 INFO  o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2024-07-23 23:22:23 INFO  c.e.r.service.impl.FileServiceImpl - File uploaded successfully: {"code":0,"data":{"file_token":"FqFwbxZoPoqvRqxWeozcEfMcnVb"},"msg":"Success"}
+2024-07-23 23:22:23 INFO  c.e.r.service.impl.FileServiceImpl - File uploaded successfully: file_token = FqFwbxZoPoqvRqxWeozcEfMcnVb
+2024-07-23 23:22:23 INFO  c.e.r.service.impl.FileServiceImpl - File uploaded successfully: {"code":0,"data":{"bytes":152360,"created_at":1721748143,"file_name":"【用户运营实习生_北京】胡骁骑 25年应届生.pdf","id":"7394851555859841065"},"msg":""}
+2024-07-23 23:22:23 INFO  c.e.r.service.impl.FileServiceImpl - File uploaded successfully: ID = 7394851555859841065
+2024-07-23 23:22:24 INFO  c.e.r.service.impl.FileServiceImpl - Streamed response: event:conversation.chat.createddata:{"id":"7394851934085333007","conversation_id":"7394851934085316623","bot_id":"7387792442688487476","created_at":1721748144,"last_error":{"code":0,"msg":""},"status":"created","usage":{"token_count":0,"output_count":0,"input_count":0}}event:conversation.chat.in_progressdata:{"id":"7394851934085333007","conversation_id":"7394851934085316623","bot_id":"7387792442688487476","created_at":1721748144,"last_error":{"code":0,"msg":""},"status":"in_progress","usage":{"token_count":0,"output_count":0,"input_count":0}}event:conversation.chat.faileddata:{"id":"7394851934085333007","conversation_id":"7394851934085316623","bot_id":"7387792442688487476","created_at":1721748144,"failed_at":1721748144,"last_error":{"code":4000,"msg":"请求参数错误"},"status":"failed","usage":{"token_count":0,"output_count":0,"input_count":0}}

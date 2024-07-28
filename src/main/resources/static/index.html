@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+    }
+    #uploadForm {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    input[type="file"] {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      margin-bottom: 10px;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #result, #errorList {
+      margin-top: 20px;
+    }
+    .file-upload {
+      margin-bottom: 10px;
+    }
+    .file-upload span {
+      font-weight: bold;
+    }
+    .file-upload .time {
+      color: #28a745;
+    }
+    .uploading {
+      color: #FFA500;
+    }
+    .error {
+      color: red;
+    }
+    .link-container {
+      margin-top: 20px;
+    }
+    .link-container a {
+      color: #007BFF;
+      text-decoration: none;
+    }
+    .link-container a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<h1>简历文件解析</h1>
+<form id="uploadForm">
+  <input type="file" id="files" name="files" multiple><br><br>
+  <button type="button" onclick="uploadFiles()">上传文件</button>
+</form>
+<br>
+<div id="result"></div>
+<div id="errorList"></div>
+<div class="link-container">
+  <h2>飞书表格地址</h2>
+  <a href="https://ugyhvcbihk.feishu.cn/base/Jrx5bFo78a41YusxRVycN0q8nNf?table=tblGyxxUfSa08xx6&view=vew7OFNnOQ" target="_blank">查看飞书表格</a>
+</div>
+
+<script>
+  async function uploadFiles() {
+    const files = Array.from(document.getElementById('files').files);
+    const results = [];
+    const errorFiles = [];
+    const concurrencyLimit = 2;
+    let currentIndex = 0;
+
+    function uploadNextBatch() {
+      const batch = files.slice(currentIndex, currentIndex + concurrencyLimit);
+      currentIndex += batch.length;
+
+      batch.forEach(file => {
+        const formData = new FormData();
+        formData.append('files', file);
+
+        const startTime = new Date();
+
+        displayUploading(file.name);
+
+        fetch('http://localhost:8080/api/files/upload', {
+          method: 'POST',
+          body: formData
+        }).then(response => response.json()).then(result => {
+          const endTime = new Date();
+          const uploadTime = ((endTime - startTime) / 1000).toFixed(2);
+
+          if (result.status === "200") {
+            results.push({ fileName: file.name, result: "上传成功", uploadTime });
+          } else {
+            results.push({ fileName: file.name, result: "Error: " + result.message, uploadTime, isError: true });
+            errorFiles.push(file.name);
+          }
+
+          updateResult();
+        }).catch(error => {
+          const endTime = new Date();
+          const uploadTime = ((endTime - startTime) / 1000).toFixed(2);
+          results.push({ fileName: file.name, result: "Error: " + error.message, uploadTime, isError: true });
+          errorFiles.push(file.name);
+          updateResult();
+        });
+      });
+
+      if (currentIndex < files.length) {
+        setTimeout(uploadNextBatch, 5000); // Wait for 1 second before next batch
+      } else {
+        setTimeout(displayErrorList, 5000);
+      }
+    }
+
+    function displayUploading(fileName) {
+      const resultDiv = document.getElementById('result');
+      const fileResultDiv = document.createElement('div');
+      fileResultDiv.className = 'file-upload uploading';
+
+      const fileNameSpan = document.createElement('span');
+      fileNameSpan.innerText = fileName + ' 正在上传...';
+      fileResultDiv.appendChild(fileNameSpan);
+
+      resultDiv.appendChild(fileResultDiv);
+    }
+
+    function updateResult() {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '';
+
+      results.forEach(({ fileName, result, uploadTime, isError }) => {
+        const fileResultDiv = document.createElement('div');
+        fileResultDiv.className = 'file-upload';
+
+        const fileNameSpan = document.createElement('span');
+        fileNameSpan.innerText = fileName + ': ';
+        fileResultDiv.appendChild(fileNameSpan);
+
+        const resultSpan = document.createElement('span');
+        resultSpan.innerText = result;
+        if (isError) {
+          resultSpan.className = 'error';
+        }
+        fileResultDiv.appendChild(resultSpan);
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'time';
+        timeSpan.innerText = ` (Uploaded in ${uploadTime} seconds)`;
+        fileResultDiv.appendChild(timeSpan);
+
+        resultDiv.appendChild(fileResultDiv);
+      });
+    }
+
+    function displayErrorList() {
+      const errorListDiv = document.getElementById('errorList');
+      errorListDiv.innerHTML = '';
+
+      if (errorFiles.length > 0) {
+        const errorTitle = document.createElement('h2');
+        errorTitle.innerText = '创建失败的文件:';
+        errorListDiv.appendChild(errorTitle);
+
+        const errorList = document.createElement('ul');
+        errorFiles.forEach(fileName => {
+          const errorItem = document.createElement('li');
+          errorItem.innerText = fileName;
+          errorItem.className = 'error';
+          errorList.appendChild(errorItem);
+        });
+
+        errorListDiv.appendChild(errorList);
+      }
+    }
+
+    uploadNextBatch();
+  }
+</script>
+</body>
+</html>
