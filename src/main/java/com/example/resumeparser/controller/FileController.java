@@ -73,10 +73,8 @@ public class FileController {
     @PostMapping("/upload")
     @CrossOrigin(origins = "*")
     public ResponseEntity<Response<String>> uploadFiles(@RequestParam("files") MultipartFile[] files) throws Exception {
-        StringBuilder message = new StringBuilder();
+        long startTime = System.currentTimeMillis();
         for (MultipartFile file : files) {
-            System.out.println(FILE_DIRECTORY);
-
             // Construct the file path
             Path filePath = Paths.get(FILE_DIRECTORY).resolve(file.getOriginalFilename()).normalize();
             File dest = filePath.toFile();
@@ -86,12 +84,14 @@ public class FileController {
             // 先用PDF解析出Str
             String resumeStr = fileService.getResumeStr(dest);
             // chat with bot get Json
-            String rawJson = fileService.chatWithBot(resumeStr);
+//            String rawJson = fileService.chatWithBot(resumeStr);
+            // chat with LLM
+            String rawJson = fileService.getResumeJsonFromLLM(resumeStr);
             String addResult = fileService.uploadFeiShuAndAddRecord(dest, rawJson);
-            message.append("Successfully uploaded: ").append(file.getOriginalFilename()).append("\n");
             log.info("Successfully uploaded: {}", file.getOriginalFilename());
         }
+        long endTime = System.currentTimeMillis();
 
-        return ResponseEntity.ok(Response.ok(message.toString()));
+        return ResponseEntity.ok(Response.ok(String.valueOf((endTime - startTime) / 1000.0)));
     }
 }

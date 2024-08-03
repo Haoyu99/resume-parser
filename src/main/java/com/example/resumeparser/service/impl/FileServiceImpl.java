@@ -1,7 +1,10 @@
 package com.example.resumeparser.service.impl;
 
-import com.example.resumeparser.config.CustomProperties;
+import com.example.resumeparser.bo.ChatWithLLMRequest;
+import com.example.resumeparser.bo.ChatWithLLMResponse;
 import com.example.resumeparser.service.FileService;
+import com.example.resumeparser.utils.Constant;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -17,9 +20,9 @@ import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -27,8 +30,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /***
  * @title FileServiceImpl
@@ -40,12 +45,6 @@ import java.util.regex.Pattern;
 @Service
 public class FileServiceImpl implements FileService {
     private static final Logger log = LoggerFactory.getLogger(FileServiceImpl.class);
-    private final CustomProperties customProperties;
-
-    private final String feiShuUploadFileUrl = "https://open.feishu.cn/open-apis/drive/v1/medias/upload_all";
-
-    private final String feishuTokenUrl = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal";
-
     // pdf2txt 相关配置
     @Value("${pdf2txt.login}")
     private String pdf2txtLoginUrl;
@@ -61,8 +60,6 @@ public class FileServiceImpl implements FileService {
     private String cozeToken;
     @Value("${coze.bot-id}")
     private String botId;
-    private static final String cozeUploadFileUrl = "https://api.coze.cn/v1/files/upload";
-    private final String cozeChatUrl = "https://api.coze.cn/v3/chat";
 
     // 飞书相关配置
     @Value("${feishu.app-id}")
@@ -73,31 +70,21 @@ public class FileServiceImpl implements FileService {
     private String feishuAppToken;
     @Value("${feishu.table-id}")
     private String feishuTableId;
-    private final String chatWithBotRequest =
-            "{\n" +
-                    "    \"bot_id\": \"%s\",\n" +
-                    "    \"user_id\": \"zhang\",\n" +
-                    "    \"stream\": true,\n" +
-                    "    \"auto_save_history\": false,\n" +
-                    "    \"additional_messages\": [\n" +
-                    "        {\n" +
-                    "            \"role\": \"user\",\n" +
-                    "            \"content\": \"%s\",\n" +
-                    "            \"content_type\": \"text\"\n" +
-                    "        }\n" +
-                    "    ]\n" +
-                    "}";
+
+    // SiliconCloud相关配置
+    @Value("${SiliconCloud.token}")
+    private String SiliconCloudToken;
+    @Value("${SiliconCloud.model}")
+    private String LLMModel;
     private final WebClient webClient;
     private final HashMap<String, Set<String>> universityTags;
+
     @Autowired
     private RestTemplate restTemplate;
 
-
-    public FileServiceImpl(CustomProperties customProperties, HashMap<String, Set<String>> universityTags) {
-        this.customProperties = customProperties;
+    public FileServiceImpl(HashMap<String, Set<String>> universityTags) {
         this.universityTags = universityTags;
         this.webClient = WebClient.builder()
-                .baseUrl("https://api.coze.cn")
                 .build();
     }
 
@@ -150,85 +137,6 @@ public class FileServiceImpl implements FileService {
             return new String(responseBody, StandardCharsets.UTF_8);
         }
         return null;
-    }
-
-    @Override
-    public String uploadCoze(File file) {
-        return null;
-//        try {
-//            if (!file.exists()) {
-//                log.error("File is empty");
-//                return "File is empty";
-//            }
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-//            headers.set("Authorization", "Bearer " + cozeBotToken);
-//
-//            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-//            body.add("file", new FileSystemResource(file));
-//
-//            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-//
-//            ResponseEntity<String> response = restTemplate.postForEntity(cozeUploadFileUrl, requestEntity, String.class);
-//
-//            if (response.getStatusCode().is2xxSuccessful()) {
-//                log.info("File uploaded successfully: {}", response.getBody());
-//                ObjectMapper mapper = new ObjectMapper();
-//                JsonNode rootNode = mapper.readTree(response.getBody());
-//                String id = rootNode.path("data").path("id").asText();
-//                log.info("File uploaded successfully: ID = {}", id);
-//                return id;
-//            } else {
-//                log.error("Failed to upload file: {}", response.getStatusCode());
-//                return "Failed to upload file: " + response.getStatusCode();
-//            }
-//        } catch (Exception e) {
-//            log.error("Error occurred while uploading file", e);
-//            return "Error occurred: " + e.getMessage();
-//        }
-    }
-
-    @Override
-    public String getResumeJson(String cozeFileId, String feishuFileToken) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + cozeToken);
-
-        String requestBody = String.format(chatWithBotRequest, escapeJson(cozeFileId));
-
-
-        try {
-            String json = restTemplate.execute(cozeChatUrl, HttpMethod.POST, request -> {
-                request.getHeaders().addAll(headers);
-                OutputStream outputStream = request.getBody();
-                if (outputStream != null) {
-                    outputStream.write(requestBody.getBytes());
-                    outputStream.flush();
-                }
-            }, response -> {
-                try (InputStream inputStream = response.getBody();
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                    StringBuilder responseString = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        responseString.append(line);
-                    }
-                    log.info("Streamed response: {}", responseString);
-
-//                    String cozeJson = getContentFormCozeJson(String.valueOf(responseString), feishuFileToken);
-//                    log.info("json:{}", cozeJson);
-//                    return cozeJson;
-                    return null;
-                } catch (IOException e) {
-                    log.error("Error reading streamed response", e);
-                    return null;
-                }
-            });
-            return json;
-        } catch (RestClientException e) {
-            log.error("Error during REST call", e);
-            return null;
-        }
     }
 
     // 转义 JSON 字符串中的特殊字符
@@ -285,7 +193,7 @@ public class FileServiceImpl implements FileService {
             HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
 
             // 发送请求
-            ResponseEntity<String> response = restTemplate.postForEntity(feishuTokenUrl, requestEntity, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(Constant.feishuTokenUrl, requestEntity, String.class);
 
             // 处理响应
             if (response.getStatusCode().is2xxSuccessful()) {
@@ -347,13 +255,13 @@ public class FileServiceImpl implements FileService {
     @Override
     public String chatWithBot(String resumeStr) {
         long startTime = System.currentTimeMillis();
-        String requestBody = String.format(chatWithBotRequest, botId, escapeJson(resumeStr));
+        String requestBody = String.format(Constant.chatWithBotRequest, botId, escapeJson(resumeStr));
         log.info("解析简历文字字数{}", requestBody.length());
         try {
             // 发起 HTTP 请求并处理流式响应
             String responseFlux = webClient
                     .post()
-                    .uri("/v3/chat")
+                    .uri(Constant.cozeChatUrl)
                     .headers(headers -> {
                         headers.setContentType(MediaType.APPLICATION_JSON);
                         headers.set("Authorization", "Bearer " + cozeToken);
@@ -380,6 +288,57 @@ public class FileServiceImpl implements FileService {
         }
     }
 
+    @Override
+    public String getResumeJsonFromLLM(String resumeStr) {
+        long startTime = System.currentTimeMillis();
+        String content = Constant.SiliconCloudChatPrompt + resumeStr;
+        ChatWithLLMRequest.Message message = new ChatWithLLMRequest.Message("user", content);
+        ChatWithLLMRequest request = ChatWithLLMRequest.builder()
+                .model(LLMModel)
+                .messages(List.of(message))
+                .stream(true)
+                .max_tokens(4096)
+                .temperature(0.7)
+                .top_p(0.7)
+                .top_k(50)
+                .frequency_penalty(0.5)
+                .n(1)
+                .build();
+        // 序列化请求体为Json
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            String requestBody = objectMapper.writeValueAsString(request);
+        }catch (JsonProcessingException e){
+            e.printStackTrace();
+            throw new RuntimeException("Json 转换失败");
+        }
+
+        String response = webClient.post()
+                .uri(Constant.SiliconCloudChatUrl)
+                .headers(headers -> {
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+                    headers.set("Authorization", SiliconCloudToken);
+                })
+                .bodyValue(request)
+                .retrieve()
+                .bodyToFlux(String.class)
+                .map(jsonString -> {
+                    try {
+                        JsonNode jsonNode = objectMapper.readTree(jsonString);
+                        return jsonNode.path("choices").get(0).path("delta").path("content").asText();
+                    } catch (Exception e) {
+                        return "";
+                    }
+                })
+                .filter(con -> !con.isEmpty())
+                .collect(Collectors.joining()) // Combine all content into a single string
+                .block();// Block to get the final result
+        System.out.println(response);
+        long endTime = System.currentTimeMillis();
+        log.info("LLM返回Json：{}", response);
+        log.info("花费时间：{}ms", endTime - startTime);
+        return response;
+    }
 
     @Override
     public String uploadFeiShuAndAddRecord(File file, String rowJson) {
@@ -404,7 +363,7 @@ public class FileServiceImpl implements FileService {
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            ResponseEntity<String> updateLoadResponse = restTemplate.postForEntity(feiShuUploadFileUrl, requestEntity, String.class);
+            ResponseEntity<String> updateLoadResponse = restTemplate.postForEntity(Constant.feishuUploadFileUrl, requestEntity, String.class);
 
             if (updateLoadResponse.getStatusCode().is2xxSuccessful()) {
                 ObjectMapper mapper = new ObjectMapper();
@@ -465,7 +424,7 @@ public class FileServiceImpl implements FileService {
             return objectMapper.writeValueAsString(rootNode);
         } catch (Exception e) {
             e.printStackTrace();
-            throw new RuntimeException("coze 返回结果不合规");
+            throw new RuntimeException("raw Json 返回结果不合规");
         }
     }
 

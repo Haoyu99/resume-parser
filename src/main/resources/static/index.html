@@ -86,7 +86,7 @@
     const files = Array.from(document.getElementById('files').files);
     const results = [];
     const errorFiles = [];
-    const concurrencyLimit = 2;
+    const concurrencyLimit = 8;
     let currentIndex = 0;
 
     function uploadNextBatch() {
@@ -109,7 +109,7 @@
           const uploadTime = ((endTime - startTime) / 1000).toFixed(2);
 
           if (result.status === "200") {
-            results.push({ fileName: file.name, result: "上传成功", uploadTime });
+            results.push({ fileName: file.name, result: result.data, uploadTime });
           } else {
             results.push({ fileName: file.name, result: "Error: " + result.message, uploadTime, isError: true });
             errorFiles.push(file.name);
@@ -126,9 +126,9 @@
       });
 
       if (currentIndex < files.length) {
-        setTimeout(uploadNextBatch, 5000); // Wait for 1 second before next batch
+        setTimeout(uploadNextBatch, 2000); // Wait for 1 second before next batch
       } else {
-        setTimeout(displayErrorList, 5000);
+        displayErrorList()
       }
     }
 
@@ -186,10 +186,54 @@
           const errorItem = document.createElement('li');
           errorItem.innerText = fileName;
           errorItem.className = 'error';
+
+          const retryButton = document.createElement('button');
+          retryButton.innerText = '重新上传';
+          retryButton.onclick = () => retryUpload(fileName);
+          errorItem.appendChild(retryButton);
+
           errorList.appendChild(errorItem);
         });
 
         errorListDiv.appendChild(errorList);
+      }
+    }
+
+    function retryUpload(fileName) {
+      const file = Array.from(document.getElementById('files').files).find(file => file.name === fileName);
+      if (file) {
+        const formData = new FormData();
+        formData.append('files', file);
+
+        const startTime = new Date();
+
+        displayUploading(file.name);
+
+        fetch('http://localhost:8080/api/files/upload', {
+          method: 'POST',
+          body: formData
+        }).then(response => response.json()).then(result => {
+          const endTime = new Date();
+          const uploadTime = ((endTime - startTime) / 1000).toFixed(2);
+
+          if (result.status === "200") {
+            results.push({ fileName: file.name, result: result.data, uploadTime });
+            const index = errorFiles.indexOf(file.name);
+            if (index > -1) {
+              errorFiles.splice(index, 1);
+            }
+          } else {
+            results.push({ fileName: file.name, result: "Error: " + result.message, uploadTime, isError: true });
+          }
+
+          updateResult();
+          displayErrorList();
+        }).catch(error => {
+          const endTime = new Date();
+          const uploadTime = ((endTime - startTime) / 1000).toFixed(2);
+          results.push({ fileName: file.name, result: "Error: " + error.message, uploadTime, isError: true });
+          updateResult();
+        });
       }
     }
 

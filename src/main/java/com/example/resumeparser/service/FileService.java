@@ -13,11 +13,6 @@ import java.io.File;
  * @create 2024/7/13 0:04
  **/
 public interface FileService {
-    // 上传文档到Coze获取到文件Id
-    String uploadCoze(File file);
-
-    // 获取Coze bot 解析的Json
-    String getResumeJson(String cozeFileId, String feishuFileToken);
 
     // 增加一条飞书记录
     String uploadFeiShuAndAddRecord(File file, String rowJson);
@@ -25,5 +20,9 @@ public interface FileService {
     // 获取pdf转txt结果
     String getResumeStr(File file);
 
+    // 与Coze机器人对话
     String chatWithBot(String resumeStr);
+
+    //
+    String getResumeJsonFromLLM(String resumeStr);
 }
